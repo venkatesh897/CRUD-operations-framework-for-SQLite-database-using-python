@@ -1,229 +1,209 @@
-# Program to do CRUD operations and store the data into database.
-
+#Program to perform CRUD operations on SQLite database
 import sqlite3
+database = 'framework.db'
+menu_file = "Menu.cfg"
+record_not_found = 'Record not found.'
+table_file = 'table_name.cfg'
+file_not_found_message = 'File may not exist or error opening file.'
 
-with open('Menu.cfg', 'r') as fMenuObj:
-	menu = fMenuObj.read()
-fMenuObj.close()
+connection = sqlite3.connect(database)
 
-with open('PromptMessages.cfg', 'r') as fObj:
-	promptMessages = eval(fObj.read())
-fObj.close()
+promt_messages = []
 
-connection = sqlite3.connect('FrameWork.db')
-columnNames = connection.execute("PRAGMA table_info(MyTable)")
-fieldNames = []
-for fieldName in columnNames:
-	if fieldName[1] != 'Status':
-		fieldNames.append(fieldName[1])
+try:
+	with open("promt_messages.cfg") as f_promt_messages:
+		promt_message = f_promt_messages.read()
+	f_promt_messages.close()
 
-def createRecord():
-	fieldValues = []
-	status = "A"
-	fieldValues.append(status)
-	for fieldName in fieldNames:
-		fieldValue = input(fieldName + ": ")
-		fieldValues.append(fieldValue)
-	record = tuple(fieldValues)
-	connection.execute('INSERT INTO MyTable VALUES' + str(record))
-	print(promptMessages[0])
+except FileNotFoundError:
+	print(file_not_found_message)
+
+promt_messages = eval(promt_message)
+
+try:
+	with open(table_file) as f_table:
+		table = f_table.read()
+	f_table.close()
+
+except FileNotFoundError:
+	print(file_not_found_message)
+
+
+try:
+	with open(menu_file) as f_menu:
+		menu = f_menu.read()
+	f_menu.close()
+
+except FileNotFoundError:
+	print(file_not_found_message)
+
+try:
+	get_column_names = connection.execute("select * from %s limit 1" %(table))
+
+except sqlite3.OperationalError:
+	print("Table not found.")
+
+column_names = [columns_description[0] for columns_description in get_column_names.description]
+
+max_length_column_name = column_names[0]
+for column_name in column_names:
+	if(len(max_length_column_name) < len(column_name)):
+		max_length_column_name = column_name
+
+max_length_column_name = column_names[0]
+
+for column_name in column_names:
+	if(len(max_length_column_name) < len(column_name)):
+		max_length_column_name = column_name
+
+def get_no_of_fields():
+
+	count_of_fields = 0
+	for column_name in column_names:
+		count_of_fields = count_of_fields + 1
+	return count_of_fields
+
+def print_pipe():
+
+	count_of_fields = get_no_of_fields()
+	print("-" * (((len(max_length_column_name) + 12) * count_of_fields) + 1) )
+
+def print_column_names():
+
+	print("|", end = "")
+	for column_name in column_names:
+		print(column_name, end ="")
+		print(" " * (len(max_length_column_name) - len(column_name) + 11), end = "")
+		print("|", end = "")
+	print("\t")
+
+def get_column_names_string():
+	column_names_string = "("
+	for column_name in column_names:
+		column_names_string = column_names_string +  column_name + ","
+	column_names_string = column_names_string.rstrip(",") + ")"
+	return column_names_string
+
+def insert_record():
+
+	field_values = []
+	for column_name in column_names:
+		if column_name == 'STATUS':
+			status = 'a'
+			field_values.append(status)
+		elif column_name == 'ID':
+			try:
+				field_value = int(input("Enter " + column_name + ": "))
+				field_values.append(field_value)
+			except:
+				print("ID must be a number.")
+				exit()
+		else:
+			field_value = input("Enter " + column_name + ": ")
+			field_values.append(field_value)
+	record = tuple(field_values)
+	duple_of_column_names = tuple(column_names)
+	column_names_string = get_column_names_string()
+	try:
+		is_record_saved = connection.execute("INSERT INTO " + table + " "+ column_names_string + "VALUES" + str(record) ).rowcount
+	except sqlite3.IntegrityError:
+		is_record_saved = 0
+		print("Id already exist")
+	if is_record_saved > 0:
+		print(promt_messages[1])
 	connection.commit()
 
-def readRecords():
-	countOfRecords = 0
-	records = connection.execute('SELECT * FROM MyTable WHERE Status = "A"')
-	for fieldValues in records:
-		printRecord(fieldValues)
-		print("-" * 20)
-		countOfRecords += 1
-	print(promptMessages[1] + ": " + str(countOfRecords))
+def show_records():
 
-def updateRecord():
-	idToUpdateRecord = input(fieldNames[0] + ": ")
-	if checkIdPresentOrNot(idToUpdateRecord):
-		with open('updatableFields.cfg', 'r') as fUpdatableFieldsObj:
-			updatableFields = eval(fUpdatableFieldsObj.read())
-		fUpdatableFieldsObj.close()
-		counter = 1
-		for index in updatableFields:
-			print(str(counter) + "." + " Update " + fieldNames[index])
-			counter += 1
-		try:
-			updateChoice = input("Enter your update choice: ")
-			updateChoice = int(updateChoice)
-		except ValueError:
-			print("Invalid choice")
-			return
-		newFieldvalue = input("Enter new " + fieldNames[updatableFields[updateChoice - 1]] + ": ")
-		updaterecordStatus = connection.execute('UPDATE MyTable SET ' + fieldNames[updatableFields[updateChoice - 1]] + ' = ' + "\"" + newFieldvalue + "\"" + ' WHERE ' + fieldNames[0] + ' = ' + idToUpdateRecord)
-		if updaterecordStatus.rowcount != 0:
-			connection.commit()
-			print(fieldNames[updatableFields[updateChoice - 1]] + " updated successfully.")
+	cursor = connection.execute("SELECT * from %s WHERE STATUS = 'a'" %(table))
+	data = cursor.fetchall()
+	print_pipe()
+	print_column_names()
+	print_pipe()
+	for record in data:
+		print("|", end ="")
+		for counter in range(0,len(record)):
+			print(record[counter], end= "")
+			print(" " * (len(max_length_column_name) - int(len(str(record[counter]))) + 11), end = "")
+			print("|", end="")
+		print("\t")
+	print_pipe()
+
+def show_record():
+
+	user_input_id = int(input("Enter ID: "))
+	cursor = connection.execute("SELECT * from %s WHERE STATUS = 'a' AND ID =" %(table) + str(user_input_id))
+	data = cursor.fetchall()
+	if not data:
+		print(promt_messages[0])
 	else:
-		print(promptMessages[3])
+		print_pipe()
+		print_column_names()
+		print_pipe()
+		for record in data:
+			print("|", end ="")
+			for counter in range(0,len(record)):
+				print(record[counter], end= "")
+				print(" " * (len(max_length_column_name) - int(len(str(record[counter]))) + 11), end = "")
+				print("|", end = "")
+			print("\t")
+		print_pipe()
 
-def deleteRecord():
-	idToDeleteRecord = input(fieldNames[0] + ": ")
-	deleteRecordStatus = connection.execute('UPDATE MyTable SET Status = "D" WHERE ' + fieldNames[0] + ' = ' + idToDeleteRecord + ' AND Status = "A"')
-	if deleteRecordStatus.rowcount != 0:
-		connection.commit()
-		print(promptMessages[2])
+def delete_record():
+
+	user_input_id =int(input("Enter ID: "))
+	is_record_deleted = connection.execute("UPDATE %s set STATUS = 'i' where ID =" %(table) + str(user_input_id)).rowcount
+	if is_record_deleted > 0:
+		print(promt_messages[2])
 	else:
-		print(promptMessages[3])
+		print(promt_messages[0])
+	connection.commit()
 
-def searchRecord():
-	idToSearchRecord = input(fieldNames[0] + ": ")
-	if checkIdPresentOrNot(idToSearchRecord):
-		recordObj = connection.execute('SELECT * FROM MyTable WHERE ' + fieldNames[0] + ' = ' + idToSearchRecord)
-		record = recordObj.fetchone()
-		printRecord(record)
-	else:
-		print(promptMessages[3])
+def update_record():
 
-def printRecord(record):
-	index = 1
-	for fieldName in fieldNames:
-		print(fieldName + ": " + record[index])
-		index += 1
+	count_of_fields = get_no_of_fields()
+	user_input_id = int(input("Enter ID: "))
+	id = connection.execute("SELECT ID from %s WHERE STATUS = 'a'" %(table))
+	ids = id.fetchall()
+	is_record_found = False
+	for id in ids:
+		if id[0] == user_input_id:
+			is_record_found = True
+			for counter in range(2, count_of_fields):
+				print(str(counter - 1) + ".Update " + column_names[counter])
+			user_input = int(input("Enter option: "))
+			if user_input >= 1 and user_input <= count_of_fields - 2:
+				user_input_data = input("Enter "+ column_names[user_input + 1] + ": ")
+				is_record_updated = 0
+				is_record_updated =  connection.execute("UPDATE %s set %s = '%s' where id = %s" %(table, column_names[user_input + 1], user_input_data, user_input_id)).rowcount	
+				if is_record_updated > 0 :
+					print(promt_messages[3])
+				else:
+					print(promt_messages[4])
+				connection.commit()
+				break
+		else:
+			is_record_found = False
+	if is_record_found == False:
+		print(promt_messages[0])
 
-def checkIdPresentOrNot(id):
-	records = connection.execute('SELECT * FROM MyTable WHERE Status = "A" AND ' + fieldNames[0] + ' = ' + id)
-	isRecordFound = False
-	for record in records:
-		if record[1] == id:
-			isRecordFound = True
-			break
-	return isRecordFound
-	
-functionList = [createRecord, readRecords, searchRecord, updateRecord, deleteRecord]
+functions_list = [insert_record, show_records, show_record, update_record, delete_record, exit]
 
 while True:
 	print(menu)
 	try:
-		userChoice = input("Enter you choice: ")
-		userChoice = int(userChoice)
-		if userChoice != 6:
-			functionList[userChoice - 1]()
-		else:
-			print("Do you really want to exit? ")
-			exitChoice = input("Type 'y' to confirm or 'n' to continue: ")
-			if exitChoice.upper() == 'Y':
-				connection.close()
-				exit()
-	except Exception:
-		print("Invalid Choice")
-	print("-" * 20)# Program to do CRUD operations and store the data into database.
-
-import sqlite3
-
-with open('Menu.cfg', 'r') as fMenuObj:
-	menu = fMenuObj.read()
-fMenuObj.close()
-
-with open('PromptMessages.cfg', 'r') as fObj:
-	promptMessages = eval(fObj.read())
-fObj.close()
-
-connection = sqlite3.connect('FrameWork.db')
-columnNames = connection.execute("PRAGMA table_info(MyTable)")
-fieldNames = []
-for fieldName in columnNames:
-	if fieldName[1] != 'Status':
-		fieldNames.append(fieldName[1])
-
-def createRecord():
-	fieldValues = []
-	status = "A"
-	fieldValues.append(status)
-	for fieldName in fieldNames:
-		fieldValue = input(fieldName + ": ")
-		fieldValues.append(fieldValue)
-	record = tuple(fieldValues)
-	connection.execute('INSERT INTO MyTable VALUES' + str(record))
-	print(promptMessages[0])
-	connection.commit()
-
-def readRecords():
-	countOfRecords = 0
-	records = connection.execute('SELECT * FROM MyTable WHERE Status = "A"')
-	for fieldValues in records:
-		printRecord(fieldValues)
-		print("-" * 20)
-		countOfRecords += 1
-	print(promptMessages[1] + ": " + str(countOfRecords))
-
-def updateRecord():
-	idToUpdateRecord = input(fieldNames[0] + ": ")
-	if checkIdPresentOrNot(idToUpdateRecord):
-		with open('updatableFields.cfg', 'r') as fUpdatableFieldsObj:
-			updatableFields = eval(fUpdatableFieldsObj.read())
-		fUpdatableFieldsObj.close()
-		counter = 1
-		for index in updatableFields:
-			print(str(counter) + "." + " Update " + fieldNames[index])
-			counter += 1
-		try:
-			updateChoice = input("Enter your update choice: ")
-			updateChoice = int(updateChoice)
-		except ValueError:
-			print("Invalid choice")
-			return
-		newFieldvalue = input("Enter new " + fieldNames[updatableFields[updateChoice - 1]] + ": ")
-		updaterecordStatus = connection.execute('UPDATE MyTable SET ' + fieldNames[updatableFields[updateChoice - 1]] + ' = ' + "\"" + newFieldvalue + "\"" + ' WHERE ' + fieldNames[0] + ' = ' + idToUpdateRecord)
-		if updaterecordStatus.rowcount != 0:
-			connection.commit()
-			print(fieldNames[updatableFields[updateChoice - 1]] + " updated successfully.")
+		user_option = int(input("Enter option: "))
+	except ValueError:
+		print("INVALID INPUT")
+		continue
+	if user_option >= 1 and user_option <= 5:
+		functions_list[user_option - 1]()
+	elif user_option == 6:
+		print("Press Y to exit.")
+		quit_option = input("Enter option: ")
+		if quit_option.upper() == 'Y':
+			functions_list[user_option - 1]()
 	else:
-		print(promptMessages[3])
+		print("INVALID INPUT")
 
-def deleteRecord():
-	idToDeleteRecord = input(fieldNames[0] + ": ")
-	deleteRecordStatus = connection.execute('UPDATE MyTable SET Status = "D" WHERE ' + fieldNames[0] + ' = ' + idToDeleteRecord + ' AND Status = "A"')
-	if deleteRecordStatus.rowcount != 0:
-		connection.commit()
-		print(promptMessages[2])
-	else:
-		print(promptMessages[3])
-
-def searchRecord():
-	idToSearchRecord = input(fieldNames[0] + ": ")
-	if checkIdPresentOrNot(idToSearchRecord):
-		recordObj = connection.execute('SELECT * FROM MyTable WHERE ' + fieldNames[0] + ' = ' + idToSearchRecord)
-		record = recordObj.fetchone()
-		printRecord(record)
-	else:
-		print(promptMessages[3])
-
-def printRecord(record):
-	index = 1
-	for fieldName in fieldNames:
-		print(fieldName + ": " + record[index])
-		index += 1
-
-def checkIdPresentOrNot(id):
-	records = connection.execute('SELECT * FROM MyTable WHERE Status = "A" AND ' + fieldNames[0] + ' = ' + id)
-	isRecordFound = False
-	for record in records:
-		if record[1] == id:
-			isRecordFound = True
-			break
-	return isRecordFound
-	
-functionList = [createRecord, readRecords, searchRecord, updateRecord, deleteRecord]
-
-while True:
-	print(menu)
-	try:
-		userChoice = input("Enter you choice: ")
-		userChoice = int(userChoice)
-		if userChoice != 6:
-			functionList[userChoice - 1]()
-		else:
-			print("Do you really want to exit? ")
-			exitChoice = input("Type 'y' to confirm or 'n' to continue: ")
-			if exitChoice.upper() == 'Y':
-				connection.close()
-				exit()
-	except Exception:
-		print("Invalid Choice")
-	print("-" * 20)
+connection.close()
