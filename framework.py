@@ -3,7 +3,7 @@ import sqlite3
 database = 'framework.db'
 menu_file = "Menu.cfg"
 record_not_found = 'Record not found.'
-table_file = 'table_name.cfg'
+table_file = 'my_table_name.cfg'
 file_not_found_message = 'File may not exist or error opening file.'
 
 connection = sqlite3.connect(database)
