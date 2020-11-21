@@ -1,4 +1,3 @@
-#Program to perform CRUD operations on SQLite database
 import sqlite3
 database = 'framework.db'
 menu_file = "Menu.cfg"
@@ -169,13 +168,16 @@ def update_record():
 	for id in ids:
 		if id[0] == user_input_id:
 			is_record_found = True
-			for counter in range(2, count_of_fields):
-				print(str(counter - 1) + ".Update " + column_names[counter])
+			with open("updatable_fields.cfg") as f_updatable_fileds:
+				updatable_fields = eval(f_updatable_fileds.read())
+			f_updatable_fileds.close()
+			for index in updatable_fields:
+				print(str(index - 1) + ". Update " + column_names[index])
 			user_input = int(input("Enter option: "))
 			if user_input >= 1 and user_input <= count_of_fields - 2:
 				user_input_data = input("Enter "+ column_names[user_input + 1] + ": ")
 				is_record_updated = 0
-				is_record_updated =  connection.execute("UPDATE %s set %s = '%s' where id = %s" %(table, column_names[user_input + 1], user_input_data, user_input_id)).rowcount	
+				is_record_updated =  connection.execute("UPDATE %s set %s = '%s' where id = %s" %(table, column_names[updatable_fields[user_input - 1]], user_input_data, user_input_id)).rowcount	
 				if is_record_updated > 0 :
 					print(promt_messages[3])
 				else:
