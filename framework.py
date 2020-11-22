@@ -1,5 +1,4 @@
 # Program to perform CRUD operations on SQLite database
-
 import sqlite3
 
 file_not_found_message = "File may not exist or error opening the file"
