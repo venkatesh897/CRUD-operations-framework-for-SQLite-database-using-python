@@ -48,12 +48,14 @@ def print_pipe():
 	print("-" + "-" * (len(max_length_column_name) + 9) * (count_of_fields - 1))
 
 def print_column_names():
+        Print_pipe()
 	print("|", end = "")
 	for index in range(1, count_of_fields):
 		print(column_names[index], end = "")
 		print(" " * (len(max_length_column_name) - len(column_names[index]) + 8), end = "")
 		print("|", end = "")
 	print("\t")
+        Print_pipe()
 
 def insert_record():
 	field_values = []
@@ -73,9 +75,7 @@ def insert_record():
 def show_records():
 	cursor = connection.execute("SELECT * from my_table WHERE STATUS = 'A'")
 	records = cursor.fetchall()
-	print_pipe()
 	print_column_names()
-	print_pipe()
 	for record in records:
 		print_record(record)
 
@@ -95,9 +95,7 @@ def show_record():
 	if not records:
 		print(promt_messages[0])
 	else:
-		print_pipe()
 		print_column_names()
-		print_pipe()
 		for record in records:
 			print_record(record)
 
